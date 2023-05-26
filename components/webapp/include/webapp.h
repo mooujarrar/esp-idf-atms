@@ -5,18 +5,18 @@ extern "C" {
 
 #include "esp_err.h"
 #include "esp_http_server.h"
+#include "esp_log.h"
 
 
-typedef struct rfidapp {
+
+typedef struct webapp {
     httpd_config_t* config;
     httpd_handle_t* server;
     uint8_t uri_list_size;
     httpd_uri_t* uri_list;
-} rfidapp_t;
+} webapp_t;
 
-
-
-typedef rfidapp_t* rfid_webapp_handle_t;
+typedef webapp_t* webapp_handle_t;
 
 /* Static methods, needed only internally */
 static inline esp_err_t get_handler(httpd_req_t *req);
@@ -28,11 +28,12 @@ static const httpd_uri_t uri_get = {
     .user_ctx = NULL
 };
 
-const rfid_webapp_handle_t rfid_app_get_defaults();
-void rfid_app_start_webserver(rfid_webapp_handle_t app);
-void rfid_app_stop_webserver(rfid_webapp_handle_t app);
-void rfid_app_register_events(esp_event_handler_t* handler);
-void rfid_app_unregister_events(esp_event_handler_t* handler);
+/* API */
+webapp_handle_t webapp_get_defaults();
+void webapp_start_webserver(webapp_handle_t app);
+void webapp_stop_webserver(webapp_handle_t app);
+void webapp_register_events(esp_event_handler_t* handler);
+void webapp_unregister_events(esp_event_handler_t* handler);
 
 #ifdef __cplusplus
 }

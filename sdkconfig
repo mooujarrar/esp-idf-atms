@@ -347,6 +347,15 @@ CONFIG_PARTITION_TABLE_MD5=y
 # end of Partition Table
 
 #
+# Access point configuration
+#
+CONFIG_ESP_WIFI_SSID="ESP-TEST"
+CONFIG_ESP_WIFI_PASSWORD="rootroot"
+CONFIG_ESP_WIFI_CHANNEL=1
+CONFIG_ESP_MAX_STA_CONN=4
+# end of Access point configuration
+
+#
 # Compiler options
 #
 CONFIG_COMPILER_OPTIMIZATION_DEFAULT=y
