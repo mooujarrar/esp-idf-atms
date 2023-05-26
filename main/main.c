@@ -2,7 +2,8 @@
 #include <esp_log.h>
 #include <inttypes.h>
 #include "rc522.h"
-#include "rfid-app.h"
+#include "webapp.h"
+#include "access-point.h"
 
 static const char* TAG = "rfid-web";
 static rc522_handle_t scanner;
@@ -20,20 +21,19 @@ static void rc522_handler(void* arg, esp_event_base_t base, int32_t event_id, vo
     }
 }
 
-static void http_server_handler(void* arg, esp_event_base_t base, esp_http_server_event_id_t event_id, void* event_data)
-{
-    esp_http_server_event_data* data = (esp_http_server_event_data*) event_data;
-
-    switch(event_id) {
-        case HTTP_SERVER_EVENT_ON_CONNECTED: {
-            ESP_LOGI(TAG, "Connection to the server";
-        }
-        break;
-    }
-}
-
 void app_main()
 {
+    //Initialize NVS
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+      ESP_ERROR_CHECK(nvs_flash_erase());
+      ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+
+    ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
+    wifi_init_softap();
+
     rc522_config_t config = {
         .spi.host = VSPI_HOST,
         .spi.miso_gpio = 19,
@@ -42,9 +42,8 @@ void app_main()
         .spi.sda_gpio = 5,
     };
 
-    const rfid_webapp_handle_t webapp = rfid_app_get_defaults();
-    rfid_app_register_events(&http_server_handler);
-    rfid_app_start_webserver(webapp);
+    const webapp_handle_t webapp = webapp_get_defaults();
+    webapp_start_webserver(webapp);
 
     rc522_create(&config, &scanner);
     rc522_register_events(scanner, RC522_EVENT_ANY, rc522_handler, NULL);
