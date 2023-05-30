@@ -21,8 +21,28 @@ static void rc522_handler(void* arg, esp_event_base_t base, int32_t event_id, vo
     }
 }
 
+static void disconnect_handler(void* arg, esp_event_base_t event_base,
+                               int32_t event_id, void* event_data)
+{
+    httpd_handle_t* server = (httpd_handle_t*) arg;
+    webapp_stop_webserver(server);   
+}
+
+static void connect_handler(void* arg, esp_event_base_t event_base,
+                            int32_t event_id, void* event_data)
+{
+    httpd_handle_t* server = (httpd_handle_t*) arg;
+
+    if (*server == NULL) {
+        const webapp_handle_t webapp = webapp_get_defaults();
+        *server = webapp_start_webserver(webapp);
+    }
+}
+
 void app_main()
 {
+    static httpd_handle_t server = NULL;
+
     //Initialize NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -31,7 +51,7 @@ void app_main()
     }
     ESP_ERROR_CHECK(ret);
 
-    ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
+    ESP_LOGI(TAG, "START WiFi SOFT AP");
     wifi_init_softap();
 
     rc522_config_t config = {
@@ -42,9 +62,12 @@ void app_main()
         .spi.sda_gpio = 5,
     };
 
-    const webapp_handle_t webapp = webapp_get_defaults();
-    webapp_start_webserver(webapp);
+    // In case of connecting to the SoftAP, we launch the webserver
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_AP_STACONNECTED, &connect_handler, &server));
+    // In case of disconnect, the server will shut down
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_AP_STADISCONNECTED, &disconnect_handler, &server));
 
+    ESP_LOGI(TAG, "START RFID SCANNER");
     rc522_create(&config, &scanner);
     rc522_register_events(scanner, RC522_EVENT_ANY, rc522_handler, NULL);
     rc522_start(scanner);
