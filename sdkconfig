@@ -356,6 +356,15 @@ CONFIG_ESP_MAX_STA_CONN=4
 # end of Access point configuration
 
 #
+# RFID card reader
+#
+CONFIG_ESP_RFID_MISO=19
+CONFIG_ESP_RFID_MOSI=23
+CONFIG_ESP_RFID_SCK=18
+CONFIG_ESP_RFID_SDA=5
+# end of RFID card reader
+
+#
 # Compiler options
 #
 CONFIG_COMPILER_OPTIMIZATION_DEFAULT=y

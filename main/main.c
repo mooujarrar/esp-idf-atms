@@ -56,10 +56,10 @@ void app_main()
 
     rc522_config_t config = {
         .spi.host = VSPI_HOST,
-        .spi.miso_gpio = 19,
-        .spi.mosi_gpio = 23,
-        .spi.sck_gpio = 18,
-        .spi.sda_gpio = 5,
+        .spi.miso_gpio = CONFIG_ESP_RFID_MISO,
+        .spi.mosi_gpio = CONFIG_ESP_RFID_MOSI,
+        .spi.sck_gpio = CONFIG_ESP_RFID_SCK,
+        .spi.sda_gpio = CONFIG_ESP_RFID_SDA,
     };
 
     // In case of connecting to the SoftAP, we launch the webserver

@@ -24,3 +24,34 @@ menu "Access point configuration"
         help
             Max number of the STA connects to AP.
 endmenu
+
+menu "RFID card reader"
+
+    config ESP_RFID_MISO
+        int "RFID Reader SPI MISO GPIO"
+        default 19
+        range 0 40
+        help
+            SPI MISO GPIO to interface the RFID reader.
+
+    config ESP_RFID_MOSI
+        int "RFID Reader SPI MOSI GPIO"
+        default 23
+        range 0 40
+        help
+            SPI MOSI GPIO to interface the RFID reader.
+
+    config ESP_RFID_SCK
+        int "RFID Reader SPI SCK GPIO"
+        default 18
+        range 0 40
+        help
+            SPI SCK GPIO to interface the RFID reader.   
+
+    config ESP_RFID_SDA
+        int "RFID Reader SPI SDA GPIO"
+        default 5
+        range 0 40
+        help
+            SPI SDA GPIO to interface the RFID reader.
+endmenu
