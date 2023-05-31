@@ -1,13 +1,15 @@
 #include "webapp.h"
 
-static const char *TAG = "webapp";
+static const char* TAG = "webapp";
+
+static const char* webpage = "<!DOCTYPE html><html><head><style>body{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:auto;overflow:auto;background:linear-gradient(315deg,rgba(101,0,94,1) 3%,rgba(60,132,206,1) 38%,rgba(48,238,226,1) 68%,rgba(255,25,25,1) 98%);animation:gradient 15s ease infinite;background-size:400% 400%;background-attachment:fixed;font-family:lato,sans-serif;color:#fff;padding:20px;box-sizing:border-box}table,td,th{border:1px solid #000;border-collapse:collapse}td,th{padding:5px}tr{background-color:#2f4f4f}@keyframes gradient{0%{background-position:0 0}50%{background-position:100% 100%}100%{background-position:0 0}}.wave{background:rgb(255 255 255 / 25%);border-radius:1000% 1000% 0 0;position:fixed;width:200%;height:12em;animation:wave 10s -3s linear infinite;transform:translate3d(0,0,0);opacity:.8;bottom:0;left:0;z-index:-1}.wave:nth-of-type(2){bottom:-1.25em;animation:wave 18s linear reverse infinite;opacity:.8}.wave:nth-of-type(3){bottom:-2.5em;animation:wave 20s -1s reverse infinite;opacity:.9}@keyframes wave{2%{transform:translateX(1)}25%{transform:translateX(-25%)}50%{transform:translateX(-50%)}75%{transform:translateX(-25%)}100%{transform:translateX(1)}}</style></head><body><div><div class=\"wave\"></div><div class=\"wave\"></div><div class=\"wave\"></div></div><h1>Time card</h1><table style=\"width:100%\"><tr><th>PICC Tag</th><th>Date</th><th>Time</th></tr></table></body></html>";
 
 /* Our URI handler function to be called during GET /uri request */
 static inline esp_err_t get_handler(httpd_req_t *req)
 {
     /* Send a simple response */
     ESP_LOGI(TAG, "Get request received from the webapp, response now will be delivered");
-    const char resp[] = "Hello ESP32";
+    const char* resp = webpage;
     httpd_resp_send(req, resp, HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
