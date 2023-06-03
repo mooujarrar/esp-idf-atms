@@ -4,6 +4,7 @@
 #include "rc522.h"
 #include "webapp.h"
 #include "access-point.h"
+#include "database.h"
 
 static const char* TAG = "rfid-web";
 static rc522_handle_t scanner;
@@ -16,6 +17,8 @@ static void rc522_handler(void* arg, esp_event_base_t base, int32_t event_id, vo
         case RC522_EVENT_TAG_SCANNED: {
                 rc522_tag_t* tag = (rc522_tag_t*) data->ptr;
                 ESP_LOGI(TAG, "Tag scanned (sn: %" PRIu64 ")", tag->serial_number);
+                db_save_tag(tag->serial_number);
+                db_read_attendance();
             }
             break;
     }
