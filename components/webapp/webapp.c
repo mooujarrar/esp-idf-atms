@@ -74,20 +74,12 @@ httpd_handle_t* webapp_start_webserver(webapp_handle_t app)
 /* Function for stopping the webserver */
 void webapp_stop_webserver(httpd_handle_t* server)
 {
-    if (*server) {
+    if (*server != NULL) {
         ESP_LOGI(TAG, "Stopping webserver");
-        if (httpd_stop(server) == ESP_OK) {
+        if (httpd_stop(*server) == ESP_OK) {
             *server = NULL;
         } else {
             ESP_LOGE(TAG, "Failed to stop http server");
         }
     }
-}
-
-void webapp_register_events(esp_event_handler_t* handler) {
-    ESP_ERROR_CHECK(esp_event_handler_register(ESP_HTTP_SERVER_EVENT, ESP_EVENT_ANY_ID, *handler, NULL));
-}
-
-void webapp_unregister_events(esp_event_handler_t* handler) {
-    ESP_ERROR_CHECK(esp_event_handler_unregister(ESP_HTTP_SERVER_EVENT, ESP_EVENT_ANY_ID, *handler));
 }
