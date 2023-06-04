@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include "database.h"
 
+ESP_EVENT_DEFINE_BASE(DB_EVENTS);
+
+static db_handle_t db_handler;
+
 static esp_err_t read_time_entry(nvs_handle_t* ptr, const char* key) {
     esp_err_t err;
     time_blob_t* valuePtr = (time_blob_t*) malloc(sizeof(time_blob_t));
@@ -40,6 +44,24 @@ static esp_err_t db_save_time_entry(time_blob_t* time_entry_ptr)
     // Close
     nvs_close(time_table_handle);
     return ESP_OK;
+}
+
+static esp_err_t db_dispatch_event(db_handle_t db, db_event_t event, void* data)
+{
+    if(!db) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    db_event_data_t e_data = {
+        .db = db,
+        .ptr = data,
+    };
+    esp_err_t err;
+    if(ESP_OK != (err = esp_event_post_to(db->event_handle, DB_EVENTS, event, &e_data, sizeof(db_event_data_t), portMAX_DELAY))) {
+        return err;
+    }
+
+    return esp_event_loop_run(db->event_handle, 0);
 }
 
 esp_err_t db_save_tag(uint64_t tag)
@@ -114,8 +136,29 @@ esp_err_t db_read_attendance() {
         res = nvs_entry_next(&it);
     }
     nvs_release_iterator(it);
+    db_dispatch_event(db_handler, DB_EVENT_TABLE_READ, NULL);
 
     // Close
     nvs_close(time_table_handle);
     return ESP_OK;
+}
+
+esp_err_t db_register_events(db_handle_t db, db_event_t event, esp_event_handler_t event_handler, void* event_handler_arg)
+{
+    db_handler = db;
+    if(!db) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    return esp_event_handler_register_with(db->event_handle, DB_EVENTS, event, event_handler, event_handler_arg);
+}
+
+esp_err_t db_unregister_events(db_handle_t db, db_event_t event, esp_event_handler_t event_handler)
+{
+    db_handler = NULL;
+    if(!db) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    return esp_event_handler_unregister_with(db->event_handle, DB_EVENTS, event, event_handler);
 }
