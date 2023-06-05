@@ -1,0 +1,6 @@
+-   repo: local
+    hooks:
+    -   id: increment-version
+        name: increment the version number
+        language: script
+        entry: ./increment_version.sh 2
