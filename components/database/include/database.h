@@ -17,11 +17,24 @@
 
 ESP_EVENT_DECLARE_BASE(DB_EVENTS);
 
-struct db_handle {
+struct db_data_entry_t {
+    const char* time;
+    const char* card_tag;
+    uint8_t direction;
+};
+
+typedef db_data_entry_t* db_data_t;
+
+typedef struct {
+    db_data_t array;
+    uint16_t size;
+} db_data_array_t;
+
+struct db_event_handle {
     esp_event_loop_handle_t event_handle;  /*<! Handle of event loop */
 };
 
-typedef struct db_handle* db_handle_t;
+typedef struct db_event_handle* db_event_handle_t;
 
 typedef enum {
     DB_EVENT_ANY = ESP_EVENT_ANY_ID,
@@ -47,5 +60,5 @@ typedef struct time_blob {
 esp_err_t db_save_tag(uint64_t tag);
 esp_err_t db_read_attendance();
 
-esp_err_t db_register_events(db_handle_t db, db_event_t event, esp_event_handler_t event_handler, void* event_handler_arg);
-esp_err_t db_unregister_events(db_handle_t db, db_event_t event, esp_event_handler_t event_handler);
+esp_err_t db_register_events(db_event_handle_t db, db_event_t event, esp_event_handler_t event_handler, void* event_handler_arg);
+esp_err_t db_unregister_events(db_event_handle_t db, db_event_t event, esp_event_handler_t event_handler);

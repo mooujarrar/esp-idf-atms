@@ -3,15 +3,22 @@
 
 ESP_EVENT_DEFINE_BASE(DB_EVENTS);
 
-static db_handle_t db_handler;
+static db_event_handle_t db_handler;
 
-static esp_err_t read_time_entry(nvs_handle_t* ptr, const char* key) {
+static esp_err_t read_time_entry(nvs_handle_t* ptr, const char* key, db_data_array_t* db_data) {
     esp_err_t err;
     time_blob_t* valuePtr = (time_blob_t*) malloc(sizeof(time_blob_t));
     size_t length = sizeof(time_blob_t);
     err = nvs_get_blob(*ptr, key, valuePtr, &length);
     if (err != ESP_OK) return err;
-    printf("time '%s', tag '%s', direction '%d'\n", key, valuePtr->tag, valuePtr->direction);
+    db_data->size = ++(db_data->size);
+    db_data->array = (db_data_t) realloc(db_data->size * sizeof(db_data_entry_t));
+    db_data->array[db_data->size - 1] = {
+        .time = key,
+        .card_tag = valuePtr->tag,
+        .direction = valuePtr->direction
+    };
+    //printf("time '%s', tag '%s', direction '%d'\n", key, valuePtr->tag, valuePtr->direction);
     free(valuePtr);
     return ESP_OK;
 }
@@ -46,7 +53,7 @@ static esp_err_t db_save_time_entry(time_blob_t* time_entry_ptr)
     return ESP_OK;
 }
 
-static esp_err_t db_dispatch_event(db_handle_t db, db_event_t event, void* data)
+static esp_err_t db_dispatch_event(db_event_handle_t db, db_event_t event, void* data)
 {
     if(!db) {
         return ESP_ERR_INVALID_ARG;
@@ -128,22 +135,26 @@ esp_err_t db_read_attendance() {
     // Example of listing all the key-value pairs of any type under specified partition and namespace
     nvs_iterator_t it = NULL;
     esp_err_t res = nvs_entry_find(NVS_DEFAULT_PART_NAME, TIME_STORAGE_NAMESPACE, NVS_TYPE_ANY, &it);
+    db_data_array_t db_data = {
+        .array = NULL,
+        .size = 0
+    }
     while(res == ESP_OK) {
         nvs_entry_info_t info;
         nvs_entry_info(it, &info); // Can omit error check if parameters are guaranteed to be non-NULL
-        err = read_time_entry(&time_table_handle, info.key);
+        err = read_time_entry(&time_table_handle, info.key, &db_data);
         if (err != ESP_OK) return err;
         res = nvs_entry_next(&it);
     }
     nvs_release_iterator(it);
-    db_dispatch_event(db_handler, DB_EVENT_TABLE_READ, NULL);
+    db_dispatch_event(db_handler, DB_EVENT_TABLE_READ, &db_data);
 
     // Close
     nvs_close(time_table_handle);
     return ESP_OK;
 }
 
-esp_err_t db_register_events(db_handle_t db, db_event_t event, esp_event_handler_t event_handler, void* event_handler_arg)
+esp_err_t db_register_events(db_event_handle_t db, db_event_t event, esp_event_handler_t event_handler, void* event_handler_arg)
 {
     db_handler = db;
     if(!db) {
@@ -153,7 +164,7 @@ esp_err_t db_register_events(db_handle_t db, db_event_t event, esp_event_handler
     return esp_event_handler_register_with(db->event_handle, DB_EVENTS, event, event_handler, event_handler_arg);
 }
 
-esp_err_t db_unregister_events(db_handle_t db, db_event_t event, esp_event_handler_t event_handler)
+esp_err_t db_unregister_events(db_event_handle_t db, db_event_t event, esp_event_handler_t event_handler)
 {
     db_handler = NULL;
     if(!db) {
