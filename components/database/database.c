@@ -11,13 +11,14 @@ static esp_err_t read_time_entry(nvs_handle_t* ptr, const char* key, db_data_arr
     size_t length = sizeof(time_blob_t);
     err = nvs_get_blob(*ptr, key, valuePtr, &length);
     if (err != ESP_OK) return err;
-    db_data->size = ++(db_data->size);
+    db_data->size++;
     db_data->array = (db_data_t) realloc(db_data->array, db_data->size * sizeof(db_data_entry_t));
-    db_data->array[db_data->size - 1] = {
+    db_data_entry_t new_data_entry = {
         .time = key,
         .card_tag = valuePtr->tag,
         .direction = valuePtr->direction
     };
+    db_data->array[(db_data->size) - 1] = new_data_entry;
     //printf("time '%s', tag '%s', direction '%d'\n", key, valuePtr->tag, valuePtr->direction);
     free(valuePtr);
     return ESP_OK;
@@ -138,7 +139,7 @@ esp_err_t db_read_attendance() {
     db_data_array_t db_data = {
         .array = NULL,
         .size = 0
-    }
+    };
     while(res == ESP_OK) {
         nvs_entry_info_t info;
         nvs_entry_info(it, &info); // Can omit error check if parameters are guaranteed to be non-NULL

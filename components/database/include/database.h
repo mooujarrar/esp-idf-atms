@@ -17,11 +17,11 @@
 
 ESP_EVENT_DECLARE_BASE(DB_EVENTS);
 
-struct db_data_entry_t {
+typedef struct db_data_entry {
     const char* time;
     const char* card_tag;
     uint8_t direction;
-};
+} db_data_entry_t;
 
 typedef db_data_entry_t* db_data_t;
 
@@ -43,7 +43,7 @@ typedef enum {
 } db_event_t;
 
 typedef struct {
-    nvs_handle_t db;
+    db_event_handle_t db;
     void* ptr;
 } db_event_data_t;
 
