@@ -12,7 +12,7 @@ static esp_err_t read_time_entry(nvs_handle_t* ptr, const char* key, db_data_arr
     err = nvs_get_blob(*ptr, key, valuePtr, &length);
     if (err != ESP_OK) return err;
     db_data->size = ++(db_data->size);
-    db_data->array = (db_data_t) realloc(db_data->size * sizeof(db_data_entry_t));
+    db_data->array = (db_data_t) realloc(db_data->array, db_data->size * sizeof(db_data_entry_t));
     db_data->array[db_data->size - 1] = {
         .time = key,
         .card_tag = valuePtr->tag,
