@@ -13,9 +13,11 @@ static esp_err_t read_time_entry(nvs_handle_t* ptr, const char* key, db_data_arr
     if (err != ESP_OK) return err;
     db_data->size++;
     db_data->array = (db_data_t) realloc(db_data->array, db_data->size * sizeof(db_data_entry_t));
+    char* tag = (char*) malloc(sizeof(valuePtr->tag));
+    strcpy(tag, valuePtr->tag); 
     db_data_entry_t new_data_entry = {
         .time = key,
-        .card_tag = valuePtr->tag,
+        .card_tag = tag,
         .direction = valuePtr->direction
     };
     db_data->array[(db_data->size) - 1] = new_data_entry;
