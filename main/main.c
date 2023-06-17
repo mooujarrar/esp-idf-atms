@@ -9,6 +9,8 @@
 static const char* TAG = "rfid-web";
 static rc522_handle_t scanner;
 
+i2c_dev_t ds3231;
+
 static void rc522_handler(void* arg, esp_event_base_t base, int32_t event_id, void* event_data)
 {
     rc522_event_data_t* data = (rc522_event_data_t*) event_data;
@@ -44,9 +46,10 @@ static void connect_handler(void* arg, esp_event_base_t event_base,
 
 void app_main()
 {
-    static httpd_handle_t server = NULL;
 
-    //Initialize NVS
+    /*
+        Initialize NVS
+    */ 
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
       ESP_ERROR_CHECK(nvs_flash_erase());
@@ -54,9 +57,27 @@ void app_main()
     }
     ESP_ERROR_CHECK(ret);
 
+    /*
+        Initialize WIFI SoftAP
+    */ 
+    static httpd_handle_t server = NULL;
     ESP_LOGI(TAG, "START WiFi SOFT AP");
     wifi_init_softap();
+    // In case of connecting to the SoftAP, we launch the webserver
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_AP_STACONNECTED, &connect_handler, &server));
+    // In case of disconnect, the server will shut down
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_AP_STADISCONNECTED, &disconnect_handler, &server));
 
+    /*
+        Initialize ds3231 RTC
+    */ 
+    ESP_ERROR_CHECK(i2cdev_init());
+    memset(&ds3231, 0, sizeof(i2c_dev_t));
+    ESP_ERROR_CHECK(ds3231_init_desc(&ds3231, 0, CONFIG_RTC_I2C_MASTER_SDA, CONFIG_RTC_I2C_MASTER_SCL));
+
+    /*
+        Initialize MFRC522 RFID reader
+    */
     rc522_config_t config = {
         .spi.host = VSPI_HOST,
         .spi.miso_gpio = CONFIG_ESP_RFID_MISO,
@@ -64,12 +85,6 @@ void app_main()
         .spi.sck_gpio = CONFIG_ESP_RFID_SCK,
         .spi.sda_gpio = CONFIG_ESP_RFID_SDA,
     };
-
-    // In case of connecting to the SoftAP, we launch the webserver
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_AP_STACONNECTED, &connect_handler, &server));
-    // In case of disconnect, the server will shut down
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_AP_STADISCONNECTED, &disconnect_handler, &server));
-
     ESP_LOGI(TAG, "START RFID SCANNER");
     rc522_create(&config, &scanner);
     rc522_register_events(scanner, RC522_EVENT_ANY, rc522_handler, NULL);

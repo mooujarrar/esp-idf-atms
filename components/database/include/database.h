@@ -11,9 +11,13 @@
 #include "time.h"
 #include <sys/time.h>
 #include <string.h>
+#include "ds3231.h"
+
 
 #define TAGS_STORAGE_NAMESPACE "tags"
 #define TIME_STORAGE_NAMESPACE "time"
+
+extern i2c_dev_t ds3231;
 
 ESP_EVENT_DECLARE_BASE(DB_EVENTS);
 

@@ -31,17 +31,23 @@ static esp_err_t db_save_time_entry(time_blob_t* time_entry_ptr)
     nvs_handle_t time_table_handle;
     esp_err_t err;
 
+    char buf[40];
+    time_t now;
+    struct tm timeinfo;
+    time(&now);
+    localtime_r(&now, &timeinfo);
+    err = ds3231_get_time(&ds3231, &timeinfo);
+    if (err != ESP_OK) return err;
+    snprintf(buf, sizeof buf - 1, "%" PRIu64, (u_int64_t)mktime(&timeinfo));
+
+    char* timePtr = (char*) malloc(sizeof(buf));
+    strcpy(timePtr, buf);
+
     // Open
     err = nvs_open(TIME_STORAGE_NAMESPACE, NVS_READWRITE, &time_table_handle);
     if (err != ESP_OK) return err;
-
-    char buf[40];
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    snprintf(buf, sizeof buf - 1, "%" PRIu64, tv.tv_sec);
-
-
-    err = nvs_set_blob(time_table_handle, buf, time_entry_ptr, sizeof(time_blob_t));
+    // Save
+    err = nvs_set_blob(time_table_handle, timePtr, time_entry_ptr, sizeof(time_blob_t));
     if (err != ESP_OK) return err;
 
     // Commit written value.
