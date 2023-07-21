@@ -135,7 +135,7 @@ static esp_err_t ws_handler(httpd_req_t *req)
     resp_arg->hd = req->handle;
     resp_arg->fd = httpd_req_to_sockfd(req);
     ESP_LOGI(WS_TAG, "ws_handler was called : %d", httpd_req_to_sockfd(req));
-
+    db_read_attendance();
     return ESP_OK;
 }
 
