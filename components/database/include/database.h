@@ -63,6 +63,7 @@ typedef struct time_blob {
 
 esp_err_t db_save_tag(uint64_t tag);
 esp_err_t db_read_attendance();
+esp_err_t db_clear();
 
 esp_err_t db_register_events(db_event_handle_t db, db_event_t event, esp_event_handler_t event_handler, void* event_handler_arg);
 esp_err_t db_unregister_events(db_event_handle_t db, db_event_t event, esp_event_handler_t event_handler);

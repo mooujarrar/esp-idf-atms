@@ -132,9 +132,51 @@ static void generate_async_resp(const char* data)
 // Initialize a queue for asynchronous communication
 static esp_err_t ws_handler(httpd_req_t *req)
 {
-    resp_arg->hd = req->handle;
-    resp_arg->fd = httpd_req_to_sockfd(req);
-    ESP_LOGI(WS_TAG, "ws_handler was called : %d", httpd_req_to_sockfd(req));
+    if (req->method == HTTP_GET)
+    {
+        resp_arg->hd = req->handle;
+        resp_arg->fd = httpd_req_to_sockfd(req);
+        ESP_LOGI(WS_TAG, "Handshake done, the new connection was opened");
+        db_read_attendance();
+        return ESP_OK;
+    }
+
+    httpd_ws_frame_t ws_pkt;
+    uint8_t *buf = NULL;
+    memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
+    ws_pkt.type = HTTPD_WS_TYPE_TEXT;
+    esp_err_t ret = httpd_ws_recv_frame(req, &ws_pkt, 0);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_ws_recv_frame failed to get frame len with %d", ret);
+        return ret;
+    }
+
+    if (ws_pkt.len)
+    {
+        buf = calloc(1, ws_pkt.len + 1);
+        if (buf == NULL)
+        {
+            ESP_LOGE(TAG, "Failed to calloc memory for buf");
+            return ESP_ERR_NO_MEM;
+        }
+        ws_pkt.payload = buf;
+        ret = httpd_ws_recv_frame(req, &ws_pkt, ws_pkt.len);
+        if (ret != ESP_OK)
+        {
+            ESP_LOGE(TAG, "httpd_ws_recv_frame failed with %d", ret);
+            free(buf);
+            return ret;
+        }
+        ESP_LOGI(TAG, "Got packet with message: %s", ws_pkt.payload);
+    }
+
+    if (ws_pkt.type == HTTPD_WS_TYPE_TEXT &&
+        strcmp((char *)ws_pkt.payload, "reset_db") == 0)
+    {
+        free(buf);
+        db_clear();
+    }
     db_read_attendance();
     return ESP_OK;
 }

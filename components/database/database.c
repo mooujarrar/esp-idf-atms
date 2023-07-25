@@ -135,6 +135,25 @@ esp_err_t db_save_tag(uint64_t tag)
     return ESP_OK;
 }
 
+esp_err_t db_clear() {
+    nvs_handle_t tags_table_handle;
+    nvs_handle_t time_table_handle;
+
+    esp_err_t err;
+
+    // Open
+    err = nvs_open(TAGS_STORAGE_NAMESPACE, NVS_READWRITE, &tags_table_handle);
+    if (err != ESP_OK) return err;
+
+    err = nvs_open(TIME_STORAGE_NAMESPACE, NVS_READWRITE, &time_table_handle);
+    if (err != ESP_OK) return err;
+
+    err = nvs_erase_all(tags_table_handle);
+    if (err != ESP_OK) return err;
+    
+    return nvs_erase_all(time_table_handle);
+}
+
 esp_err_t db_read_attendance() {
     nvs_handle_t time_table_handle;
     esp_err_t err;
