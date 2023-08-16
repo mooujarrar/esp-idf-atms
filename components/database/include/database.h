@@ -14,8 +14,8 @@
 #include "ds3231.h"
 
 
-#define TAGS_STORAGE_NAMESPACE "tags"
-#define TIME_STORAGE_NAMESPACE "time"
+#define TAGS_STORAGE_NAMESPACE "tags_table"
+#define TIME_STORAGE_NAMESPACE "time_table"
 
 extern i2c_dev_t ds3231;
 
