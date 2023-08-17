@@ -1,11 +1,11 @@
 /**
 **********************************
 * Program Description:
-* This file is the entry point to the firmware.
+* @brief This file is the entry point to the firmware.
 * It set all tasks up and the needed configuration for them through the main loop.
-* Filename : main.c
-* Author : Mohyiddine Oujarrar (mooujarrar)
-* Date : 16/08/2023
+* @file main.c
+* @author Mohyiddine Oujarrar (mooujarrar) (mohyiddineoujarrar@gmail.com) 
+* @date 16/08/2023
 *************************************
 */
 
@@ -54,9 +54,9 @@ static void rc522_handler(void *arg, esp_event_base_t base, int32_t event_id, vo
 /**
  * @brief That handler is subscribing to the event
  *        of connecting to the ESP32 access point.
- *        It checks if the HTTP server is not previously,
+ *        It checks if the HTTP server is not previously
  *        instanciated by another client, if not
- *        we launch an HTTP server instance
+ *        we launch an HTTP server instance.
  *
  * @param arg The event is triggered with the HTTP server instance as argument
  * @param base *Not important*
@@ -123,11 +123,12 @@ static void initialise_mdns(void)
 
 /**
  * @brief Initializing the Virtual FS of the ESP32
- *        to store the WebApp of the Time and Attendance Management System.
+ *        to store the WebApp of the Time and 
+ *        Attendance Management System (ATMS).
  *
  * @return esp_err_t Status of the operation:
- *                    - ESP_OK if succeded.
- *                   - NOT(ESP_OK) otherwise.
+ *                  - ESP_OK if succeded.
+ *                  - NOT(ESP_OK) otherwise.
  */
 esp_err_t init_fs(void)
 {

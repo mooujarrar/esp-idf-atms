@@ -1,12 +1,12 @@
 /**
 **********************************
 * Program Description:
-* Manage the users Time and Attendance entries inside a Database
+* @brief Manage the users Time and Attendance entries inside a Database
 * Persistency is insured using the Flash memory of the ESP32
 * NVS (Non Volatile Storage) is used for CRUD actions on the entries.
-* Filename : database.c
-* Author : Mohyiddine Oujarrar (mooujarrar)
-* Date : 16/08/2023
+* @file database.c
+* @author Mohyiddine Oujarrar (mooujarrar) (mohyiddineoujarrar@gmail.com) 
+* @date 16/08/2023
 *************************************
 */
 
@@ -18,14 +18,14 @@ ESP_EVENT_DEFINE_BASE(DB_EVENTS);
 static db_event_handle_t db_handler;
 
 /**
- * @brief Read and return the user time entry from the database
+ * @brief Read and return the user time entry from the database.
  *        It takes a timestamp as a key, and gets the stored
- *        information: Card_Tag, Direction
+ *        information: Card_Tag, Direction.
  * 
- * @param ptr Pointer on the database handle
- * @param key The saved timestamp when the Card was read
- * @param db_data The value stored in the map <Card_Tag, Direction>
- * @return esp_err_t The Status of the operation
+ * @param ptr Pointer on the database handle.
+ * @param key The saved timestamp when the Card was read.
+ * @param db_data The value stored in the map <Card_Tag, Direction>.
+ * @return esp_err_t The Status of the operation.
  */
 static esp_err_t read_time_entry(nvs_handle_t* ptr, const char* key, db_data_array_t* db_data) {
     esp_err_t err;
@@ -50,7 +50,7 @@ static esp_err_t read_time_entry(nvs_handle_t* ptr, const char* key, db_data_arr
 }
 
 /**
- * @brief Saves the <Tag, Time, Direction> in the **time_table**
+ * @brief Saves the <Tag, Time, Direction> in the **time_table**.
  *        To get the current timestamp the RTC module ds3231 is used.
  * 
  * @param time_entry_ptr The <Tab, Direction> already set in db_save_tag().
@@ -99,10 +99,10 @@ static esp_err_t db_save_time_entry(time_blob_t* time_entry_ptr)
  *          then sets the Direction to Out.
  *        - Triggers db_save_time_entry() function to persist 
  *          the Direction and Timestamp with the read tag inside
- *          the **time_table**
+ *          the **time_table**.
  * 
- * @param tag Serial number of the PICC
- * @return esp_err_t Returns the status of the operation
+ * @param tag Serial number of the PICC.
+ * @return esp_err_t Returns the status of the operation.
  */
 esp_err_t db_save_tag(uint64_t tag)
 {
@@ -161,7 +161,7 @@ esp_err_t db_save_tag(uint64_t tag)
  * @brief Clears both time and tags tables
  *        from the Flash of the ESP.
  * 
- * @return esp_err_t Status of the operation
+ * @return esp_err_t Status of the operation.
  */
 esp_err_t db_clear() {
     nvs_handle_t tags_table_handle;
@@ -183,14 +183,14 @@ esp_err_t db_clear() {
 }
 
 /**
- * @brief Pushes the Database events through Event Loop Library
+ * @brief Pushes the Database events through Event Loop Library.
  *        Subscribers registered to that event will receive its data
  *        after that dispatch.
  * 
- * @param db Handler of the database
- * @param event Event to push
- * @param data Data to push with the event
- * @return esp_err_t Status of the operation
+ * @param db Handler of the database.
+ * @param event Event to push.
+ * @param data Data to push with the event.
+ * @return esp_err_t Status of the operation.
  */
 static esp_err_t db_dispatch_event(db_event_handle_t db, db_event_t event, void* data)
 {
@@ -252,13 +252,13 @@ esp_err_t db_read_attendance() {
 }
 
 /**
- * @brief Event loop register/unregister functions
+ * @brief Event loop register/unregister functions.
  * 
- * @param db Database handle
- * @param event 
- * @param event_handler 
- * @param event_handler_arg 
- * @return esp_err_t 
+ * @param db Database handle.
+ * @param event DB_EVENT_TABLE_READ Table is read.
+ * @param event_handler *Not important*
+ * @param event_handler_arg *Not important*
+ * @return esp_err_t Status of the operation.
  */
 esp_err_t db_register_events(db_event_handle_t db, db_event_t event, esp_event_handler_t event_handler, void* event_handler_arg)
 {

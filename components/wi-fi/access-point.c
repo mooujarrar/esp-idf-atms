@@ -1,12 +1,12 @@
 /**
 **********************************
 * Program Description:
-* This file sets the ESP32 as an access point
+* @brief This file sets the ESP32 as an access point
 * It configures Wi-Fi settings such as: SSID, Key, Security parameters...
 * This implementation is heavily inspired by the SoftAP example from ESP-IDF
-* Filename : access-point.c
-* Author : Mohyiddine Oujarrar (mooujarrar)
-* Date : 16/08/2023
+* @file access-point.c
+* @author Mohyiddine Oujarrar (mooujarrar) (mohyiddineoujarrar@gmail.com) 
+* @date 16/08/2023
 *************************************
 */
 
