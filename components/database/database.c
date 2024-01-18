@@ -1,3 +1,15 @@
+/**
+**********************************
+* Program Description:
+* @brief Manage the users Time and Attendance entries inside a Database
+* Persistency is insured using the Flash memory of the ESP32
+* NVS (Non Volatile Storage) is used for CRUD actions on the entries.
+* @file database.c
+* @author Mohyiddine Oujarrar (mooujarrar) (mohyiddineoujarrar@gmail.com) 
+* @date 16/08/2023
+*************************************
+*/
+
 #include <stdio.h>
 #include "database.h"
 
@@ -5,6 +17,16 @@ ESP_EVENT_DEFINE_BASE(DB_EVENTS);
 
 static db_event_handle_t db_handler;
 
+/**
+ * @brief Read and return the user time entry from the database.
+ *        It takes a timestamp as a key, and gets the stored
+ *        information: Card_Tag, Direction.
+ * 
+ * @param ptr Pointer on the database handle.
+ * @param key The saved timestamp when the Card was read.
+ * @param db_data The value stored in the map <Card_Tag, Direction>.
+ * @return esp_err_t The Status of the operation.
+ */
 static esp_err_t read_time_entry(nvs_handle_t* ptr, const char* key, db_data_array_t* db_data) {
     esp_err_t err;
     time_blob_t* valuePtr = (time_blob_t*) malloc(sizeof(time_blob_t));
@@ -23,11 +45,17 @@ static esp_err_t read_time_entry(nvs_handle_t* ptr, const char* key, db_data_arr
         .direction = valuePtr->direction
     };
     db_data->array[(db_data->size) - 1] = new_data_entry;
-    //printf("time '%s', tag '%s', direction '%d'\n", key, valuePtr->tag, valuePtr->direction);
     free(valuePtr);
     return ESP_OK;
 }
 
+/**
+ * @brief Saves the <Tag, Time, Direction> in the **time_table**.
+ *        To get the current timestamp the RTC module ds3231 is used.
+ * 
+ * @param time_entry_ptr The <Tab, Direction> already set in db_save_tag().
+ * @return esp_err_t Status of the operation.
+ */
 static esp_err_t db_save_time_entry(time_blob_t* time_entry_ptr)
 {
     nvs_handle_t time_table_handle;
@@ -45,10 +73,10 @@ static esp_err_t db_save_time_entry(time_blob_t* time_entry_ptr)
     char* timePtr = (char*) malloc(sizeof(buf));
     strcpy(timePtr, buf);
 
-    // Open
+    // Open the time table
     err = nvs_open(TIME_STORAGE_NAMESPACE, NVS_READWRITE, &time_table_handle);
     if (err != ESP_OK) return err;
-    // Save
+    // Save the new entry
     err = nvs_set_blob(time_table_handle, timePtr, time_entry_ptr, sizeof(time_blob_t));
     if (err != ESP_OK) return err;
 
@@ -64,30 +92,24 @@ static esp_err_t db_save_time_entry(time_blob_t* time_entry_ptr)
     return ESP_OK;
 }
 
-static esp_err_t db_dispatch_event(db_event_handle_t db, db_event_t event, void* data)
-{
-    if(!db) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    db_event_data_t e_data = {
-        .db = db,
-        .ptr = data,
-    };
-    esp_err_t err;
-    if(ESP_OK != (err = esp_event_post_to(db->event_handle, DB_EVENTS, event, &e_data, sizeof(db_event_data_t), portMAX_DELAY))) {
-        return err;
-    }
-
-    return esp_event_loop_run(db->event_handle, 0);
-}
-
+/**
+ * @brief - Saves a newly read tag in the **tags_table** if 
+ *          it wasnt existing and sets the Direction to IN.
+ *        - Erases the tag if was already present, 
+ *          then sets the Direction to Out.
+ *        - Triggers db_save_time_entry() function to persist 
+ *          the Direction and Timestamp with the read tag inside
+ *          the **time_table**.
+ * 
+ * @param tag Serial number of the PICC.
+ * @return esp_err_t Returns the status of the operation.
+ */
 esp_err_t db_save_tag(uint64_t tag)
 {
     nvs_handle_t tags_table_handle;
     esp_err_t err;
 
-    // Open
+    // Open tags_table
     err = nvs_open(TAGS_STORAGE_NAMESPACE, NVS_READWRITE, &tags_table_handle);
     if (err != ESP_OK) return err;
 
@@ -135,6 +157,12 @@ esp_err_t db_save_tag(uint64_t tag)
     return ESP_OK;
 }
 
+/**
+ * @brief Clears both time and tags tables
+ *        from the Flash of the ESP.
+ * 
+ * @return esp_err_t Status of the operation.
+ */
 esp_err_t db_clear() {
     nvs_handle_t tags_table_handle;
     nvs_handle_t time_table_handle;
@@ -154,29 +182,68 @@ esp_err_t db_clear() {
     return nvs_erase_all(time_table_handle);
 }
 
+/**
+ * @brief Pushes the Database events through Event Loop Library.
+ *        Subscribers registered to that event will receive its data
+ *        after that dispatch.
+ * 
+ * @param db Handler of the database.
+ * @param event Event to push.
+ * @param data Data to push with the event.
+ * @return esp_err_t Status of the operation.
+ */
+static esp_err_t db_dispatch_event(db_event_handle_t db, db_event_t event, void* data)
+{
+    if(!db) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    db_event_data_t e_data = {
+        .db = db,
+        .ptr = data,
+    };
+    esp_err_t err;
+    if(ESP_OK != (err = esp_event_post_to(db->event_handle, DB_EVENTS, event, &e_data, sizeof(db_event_data_t), portMAX_DELAY))) {
+        return err;
+    }
+
+    return esp_event_loop_run(db->event_handle, 0);
+}
+
+/**
+ * @brief Reads the whole database and sends it 
+ *        to all subscribers through the event loop.
+ * 
+ * @return esp_err_t Status of the operation.
+ */
 esp_err_t db_read_attendance() {
     nvs_handle_t time_table_handle;
     esp_err_t err;
 
-    // Open
+    // Open the time table
     err = nvs_open(TIME_STORAGE_NAMESPACE, NVS_READWRITE, &time_table_handle);
     if (err != ESP_OK) return err;
 
-    // Example of listing all the key-value pairs of any type under specified partition and namespace
+    // Listing all the key-value pairs of the time table namespace
     nvs_iterator_t it = NULL;
     esp_err_t res = nvs_entry_find(NVS_DEFAULT_PART_NAME, TIME_STORAGE_NAMESPACE, NVS_TYPE_ANY, &it);
+    // Initiate the data holder
     db_data_array_t db_data = {
         .array = NULL,
         .size = 0
     };
+    // Iterate over the keys, in that case timestamps
     while(res == ESP_OK) {
         nvs_entry_info_t info;
         nvs_entry_info(it, &info); // Can omit error check if parameters are guaranteed to be non-NULL
+        // Read the value from the NVS database
+        // Put the read result inside the data holder and update its size
         err = read_time_entry(&time_table_handle, info.key, &db_data);
         if (err != ESP_OK) return err;
         res = nvs_entry_next(&it);
     }
     nvs_release_iterator(it);
+    // Pushes the read database entries as data of the DB_EVENT_TABLE_READ event 
     db_dispatch_event(db_handler, DB_EVENT_TABLE_READ, &db_data);
 
     // Close
@@ -184,6 +251,15 @@ esp_err_t db_read_attendance() {
     return ESP_OK;
 }
 
+/**
+ * @brief Event loop register/unregister functions.
+ * 
+ * @param db Database handle.
+ * @param event DB_EVENT_TABLE_READ Table is read.
+ * @param event_handler *Not important*
+ * @param event_handler_arg *Not important*
+ * @return esp_err_t Status of the operation.
+ */
 esp_err_t db_register_events(db_event_handle_t db, db_event_t event, esp_event_handler_t event_handler, void* event_handler_arg)
 {
     db_handler = db;

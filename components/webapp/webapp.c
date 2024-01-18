@@ -1,12 +1,26 @@
+/**
+**********************************
+* Program Description:
+* @brief - Setup of the HTTP/Websocket server to communicate
+*       the saved entries to a client.
+*        - Serves the saved Webapp from the Virtual FS.
+*        - Receives client REST/WS requests/frames
+         and responds accordingly.
+* @file webapp.c
+* @author Mohyiddine Oujarrar (mooujarrar) (mohyiddineoujarrar@gmail.com) 
+* @date 16/08/2023
+*************************************
+*/
+
 #include "webapp.h"
 
 #define FILE_PATH_MAX (ESP_VFS_PATH_MAX + 128)
 #define CHECK_FILE_EXTENSION(filename, ext) (strcasecmp(&filename[strlen(filename) - strlen(ext)], ext) == 0)
 #define SCRATCH_BUFSIZE (10240)
 
-static const char* TAG = "webapp";
-static const char *REST_TAG = "esp-rest";
-static const char *WS_TAG = "websocket";
+static const char* TAG = "MY-ATMS-WEBAPP";
+static const char *REST_TAG = "MY-ATMS-WEBAPP-REST";
+static const char *WS_TAG = "MY-ATMS-WEBAPP-WS";
 static db_event_handle_t db;
 httpd_handle_t server = NULL;
 
@@ -37,7 +51,15 @@ static esp_err_t set_content_type_from_file(httpd_req_t *req, const char *filepa
     return httpd_resp_set_type(req, type);
 }
 
-/* Our URI handler function to be called during GET /uri request */
+/**
+ * @brief Our URI handler function to be called during GET /uri request.
+ *        If called with only a '/' it means that a client has tried to visit
+ *        The HTTP server, we will then read all our Webapp files (.JS, .HTML, .CSS)
+ *        and send them in form of chunks back to the clients browser.
+ * 
+ * @param req request object holding the uri.
+ * @return esp_err_t Status of the operation.
+ */
 static esp_err_t get_handler(httpd_req_t *req)
 {
     char filepath[FILE_PATH_MAX];
@@ -97,7 +119,13 @@ struct async_resp_arg
 
 struct async_resp_arg *resp_arg;
 
-// The asynchronous response
+/**
+ * @brief The asynchronous response pushed through the WS.
+ *        This response holds a JSON representation of the whole
+ *        ATMS database.
+ * 
+ * @param data JSON representation of the ATMS(saved the Flash of the ESP).
+ */
 static void generate_async_resp(const char* data)
 {
     // Data format to be sent from the server as a response to the client
@@ -129,9 +157,18 @@ static void generate_async_resp(const char* data)
 
 }
 
-// Initialize a queue for asynchronous communication
+/**
+ * @brief Handler for the websocket communication.
+ * 
+ * @param req 
+ * @return esp_err_t 
+ */
 static esp_err_t ws_handler(httpd_req_t *req)
 {
+    /*
+        In case of a connection to the WS, no frames are read.
+        We only provide the ATMS entries to the client.
+    */
     if (req->method == HTTP_GET)
     {
         resp_arg->hd = req->handle;
@@ -141,6 +178,9 @@ static esp_err_t ws_handler(httpd_req_t *req)
         return ESP_OK;
     }
 
+    /*
+        Otherwise, we should try to read the oncoming frame
+    */
     httpd_ws_frame_t ws_pkt;
     uint8_t *buf = NULL;
     memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
@@ -148,7 +188,7 @@ static esp_err_t ws_handler(httpd_req_t *req)
     esp_err_t ret = httpd_ws_recv_frame(req, &ws_pkt, 0);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "httpd_ws_recv_frame failed to get frame len with %d", ret);
+        ESP_LOGE(WS_TAG, "httpd_ws_recv_frame failed to get frame len with %d", ret);
         return ret;
     }
 
@@ -157,31 +197,47 @@ static esp_err_t ws_handler(httpd_req_t *req)
         buf = calloc(1, ws_pkt.len + 1);
         if (buf == NULL)
         {
-            ESP_LOGE(TAG, "Failed to calloc memory for buf");
+            ESP_LOGE(WS_TAG, "Failed to calloc memory for buf");
             return ESP_ERR_NO_MEM;
         }
         ws_pkt.payload = buf;
         ret = httpd_ws_recv_frame(req, &ws_pkt, ws_pkt.len);
         if (ret != ESP_OK)
         {
-            ESP_LOGE(TAG, "httpd_ws_recv_frame failed with %d", ret);
+            ESP_LOGE(WS_TAG, "httpd_ws_recv_frame failed with %d", ret);
             free(buf);
             return ret;
         }
-        ESP_LOGI(TAG, "Got packet with message: %s", ws_pkt.payload);
+        ESP_LOGI(WS_TAG, "Got packet with message: %s", ws_pkt.payload);
     }
 
+    /*
+        If the client decides to reset the whole database,
+        he sends reset_db through the ws.
+        TODO: other interractions (Delete one entry, update an entry etc...)
+    */
     if (ws_pkt.type == HTTPD_WS_TYPE_TEXT &&
         strcmp((char *)ws_pkt.payload, "reset_db") == 0)
     {
         free(buf);
         db_clear();
     }
+    /*
+        After clearing, we should resend the update entries
+        (empty in that case) to the client.
+    */ 
     db_read_attendance();
     return ESP_OK;
 }
 
-
+/**
+ * @brief Events from the HTTP Server:
+ * 
+ * @param arg *Not important*
+ * @param base *Not important*
+ * @param event_id HTTP_SERVER_EVENT_ON_CONNECTED in case of a new client connection to the server.
+ * @param event_data *Not important*
+ */
 static void http_server_handler(void* arg, esp_event_base_t base, int32_t event_id, void* event_data)
 {
     //esp_http_server_event_data* data = (esp_http_server_event_data*) event_data;
@@ -194,6 +250,17 @@ static void http_server_handler(void* arg, esp_event_base_t base, int32_t event_
     }
 }
 
+/**
+ * @brief The handler of the database new entries:
+ *             - Formats data to a JSON format.
+ *             - Triggers generate_async_resp() to broadcast
+ *               this content via WebSocket to all connected clients.
+ * 
+ * @param arg *Not important*
+ * @param base *Not important*
+ * @param event_id DB_EVENT_TABLE_READ in case of a new Tag reading.
+ * @param event_data New database entries.
+ */
 static void db_handler(void* arg, esp_event_base_t base, int32_t event_id, void* event_data)
 {
     db_event_data_t* data = (db_event_data_t*) event_data;
@@ -221,9 +288,33 @@ static void db_handler(void* arg, esp_event_base_t base, int32_t event_id, void*
     }
 }
 
+/**
+ * @brief Subscribe/Register to the Database Event Loop.
+ *        When the database is modified, its new
+ *        state is caught in this function.
+ * 
+ */
+static void register_to_db_events() {
+    esp_event_loop_args_t event_args = {
+        .queue_size = 1,
+        .task_name = NULL, // no task will be created
+    };
+    db = (db_event_handle_t) malloc(sizeof(struct db_event_handle));
+    if(ESP_OK != esp_event_loop_create(&event_args, &db->event_handle)) {
+        ESP_LOGE(TAG, "Cannot create event loop for DB_EVENTS");
+        return;
+    }
+    // When the new state comes, db_handler() is called. 
+    db_register_events(db, DB_EVENT_ANY, db_handler, NULL);
+} 
+
+
 /* ------------------ API ------------------------ */
 
-// URI handler for send state of variables using webSockets.
+/**
+ * @brief URI handler for sending database entries using WebSocket.
+ * 
+ */
 static httpd_uri_t ws_get = {
     .uri       = "/ws",  
     .method    = HTTP_GET,
@@ -232,7 +323,9 @@ static httpd_uri_t ws_get = {
     .is_websocket = true
 };
 
-/* URI handler structure for GET /uri */
+/** 
+ * @brief URI handler structure for GET / to serve the weball.
+ */
 static httpd_uri_t uri_get = {
     .uri      = "/*",
     .method   = HTTP_GET,
@@ -240,6 +333,12 @@ static httpd_uri_t uri_get = {
     .user_ctx = NULL
 };
 
+/**
+ * @brief Helper function to set the default configuration 
+ *        of the HTTP server.
+ * 
+ * @return webapp_handle_t handle structure of the webapp.
+ */
 webapp_handle_t webapp_get_defaults() {
     webapp_handle_t app = (webapp_handle_t) malloc(sizeof(webapp_t));
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
@@ -264,25 +363,16 @@ webapp_handle_t webapp_get_defaults() {
     return app;
 }
 
-static void register_to_db_events() {
-    esp_event_loop_args_t event_args = {
-        .queue_size = 1,
-        .task_name = NULL, // no task will be created
-    };
-    db = (db_event_handle_t) malloc(sizeof(struct db_event_handle));
-    if(ESP_OK != esp_event_loop_create(&event_args, &db->event_handle)) {
-        ESP_LOGE(TAG, "Cannot create event loop for DB_EVENTS");
-        return;
-    }
-    db_register_events(db, DB_EVENT_ANY, db_handler, NULL);
-} 
-
-/* Function for starting the webserver */
+/**
+ * @brief Function for starting the webserver.
+ *        Called from the main loop when the first client connects.
+ * 
+ */
 void webapp_start_webserver()
 {
     ESP_LOGI(TAG, "Starting webserver");
     const webapp_handle_t app = webapp_get_defaults();
-    // Initialize the handler for the ws
+    // Initialize the asynchronous response handler for the websocket
     resp_arg = malloc(sizeof(struct async_resp_arg));
 
     /* Start the httpd server */
@@ -298,7 +388,11 @@ void webapp_start_webserver()
     }
 }
 
-/* Function for stopping the webserver */
+/**
+ * @brief Function for stopping the webserver. 
+ *        Called when the last client disconnects from the ATMS.
+ * 
+ */
 void webapp_stop_webserver()
 {
     ESP_LOGI(TAG, "Stopping webserver");
