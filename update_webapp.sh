@@ -1,0 +1,1 @@
+cp -r /media/sf_shared/dist ./components/webapp/
